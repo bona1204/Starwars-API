@@ -38,13 +38,64 @@ def sitemap():
 
 @app.route('/user', methods=['GET'])
 def handle_hello():
-
+    users = User.query.all()
+    users=list(map(lambda item: item.serialize(), users))
+    print(users)
     response_body = {
         "msg": "Hello, this is your GET /user response "
     }
 
-    return jsonify(response_body), 200
+    return jsonify(users), 200
 
+@app.route('/register', methods=['POST'])
+def register_user():
+    body=request.get_json()
+    email=body["email"]
+    name=body["name"]
+    password=body["password"]
+    is_active=body["is_active"]
+    if body is None:
+        raise APIException("You nned to specify the request body as json object", status_code=400)
+    if "email" not in body:
+        raise APIException("specify the email", status_code=400)
+    new_user=User(email=email, name=name, password=password, is_active=is_active)
+    db.session.add(new_user)
+    db.session.commit()
+      
+    return jsonify({"mensaje":"Usuario creado"}), 201
+
+@app.route('/user/<int:id>', methods=['GET'])
+def get_specify_user(id):
+    user = User.query.get(id)
+
+    return jsonify(user.serialize()), 200
+
+@app.route('/get_user', methods=['POST'])
+def get_specify_user2():
+    body = request.get_json()
+    id = body["id"]
+    user = User.query.get(id)
+    return jsonify(user.serialize()), 200
+
+@app.route('/get_user', methods=['DELETE'])
+def delete_specify_user():
+    body = request.get_json()
+    id = body["id"]
+    user = User.query.get(id)
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify("Usuario eliminado"), 200
+
+@app.route('/get_user', methods=['PUT'])
+def edit_specify_user():
+    body = request.get_json()
+    id = body["id"]
+    name=body["name"]
+    user = User.query.get(id)
+    user.name=name
+
+    db.session.commit()
+    return jsonify(user.serialize()), 200
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
