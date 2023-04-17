@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
+from models import db, User, FavoritePeople, People
 #from models import Person
 
 app = Flask(__name__)
@@ -96,6 +96,45 @@ def edit_specify_user():
 
     db.session.commit()
     return jsonify(user.serialize()), 200
+
+@app.route('/add-favorite/people', methods=['POST'])
+def add_favorite_people():
+    body = request.get_json()
+    user_id = body["user_id"]
+    people_id = body["people_id"]
+
+    character = People.query.get(people.id)
+    if not character:
+        raise APIException("personaje no encontrado", status_code=404)
+
+    user = user.query.get(user_id).first()
+    if not user:
+        raise APIException("usuario no encontrado", status_code=404)
+
+    fav_exist = FavoritePeople.query.filter_by(user_id=user.id, people_id=character.id).first() is not None
+    if not fav_exist:
+        raise APIException("El usuario ya lo tiene agregado a favoritos", status_code=404)
+    
+    favorite_people = FavoritePeople(user_id=user.id, people_id=character.id)
+    db.session.add(favorite_people)
+    db.session.commit()
+
+@app.route('/favorites', methods=['POST'])
+def list_Favorites():
+    body = request.get_json()
+    user_id = body["user_id"]
+    if not user_id:
+        raise APIException("Faltan datos", status_code=404)
+
+    user= User.query.get(user_id)
+    if not user:
+        raise APIException("usuario no encontrado", status_code=404)
+
+    user_favorites = FavoritePeople.query.filter_by(user_id=user.id).all()
+    user_favorites_final = list(map(lambda item: item.serialize(), user_favorites))
+
+    return jsonify(user_favorites_final), 200
+
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
